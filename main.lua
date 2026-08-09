@@ -92,6 +92,7 @@ local function clear_screen() do -- resets screen (literally copied some of the 
         for x = 1, DISPLAY_WIDTH do -- number of cols, width
             DISPLAY[y][x]=false
         end
+    end
 end
 
 local function draw(y, x, n) do
@@ -148,7 +149,7 @@ function love.load(arg)
         end
         io.write("\n")
     end
-    ]]
+    ]] --
 
     local function execute(opcode)
         local op = (opcode >> 12) & 0xF
@@ -162,6 +163,7 @@ function love.load(arg)
             if x == 0x0 then -- note to self consider NNN == 0x0E0
                 if NN == 0xE0 then
                     clear_screen();
+                end
         elseif op == 0x1 then
             pc = NNN
         elseif op == 0x2 then
@@ -172,14 +174,17 @@ function love.load(arg)
             v[x] = NN
         elseif op == 0x7 then
             v[x] = v[x] + NN;
+        end
         elseif op == 0x8 then
         elseif op == 0x9 then
         elseif op == 0xA then
             I = NNN
+        end
         elseif op == 0xB then
         elseif op == 0xC then
         elseif op == 0xD then
             draw(v[x] & 63,v[y] & 31,n)
+        end
         elseif op == 0xE then
         elseif op == 0xF then
         else 
