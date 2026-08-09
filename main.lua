@@ -3,12 +3,14 @@ local MEMORY_SIZE = 0x1000 -- 4096 bits
 local PROGRAM_START = 0x200 -- first 512 bits are reserved for the interpreter
 local MEMORY = {}
 
-for i = 0, 0xFFF do
-    MEMORY[i] = 0
-end
+function meminit()
+    for i = 0, 0xFFF do
+        MEMORY[i] = 0
+    end
 
-for i = 1, #data do
-    MEMORY[0x200 + i - 1] = data:byte(i) -- again, first 512 bytes are reserved for the interpreter
+    for i = 1, #data do
+        MEMORY[0x200 + i - 1] = data:byte(i) -- again, first 512 bytes are reserved for the interpreter
+    end
 end
 
 local pc = PROGRAM_START -- pc stamds for "Program Counter" and it stores the address of where
@@ -21,7 +23,7 @@ local stack_pointer = 1 -- points to the last element in the stack
 local delay_timer = 0 -- if not 0 then decreases
 local sound_timer = 0 -- if not 0 then it makes a sound and decreases
 
-function tick_timers() do
+function tick_timers()
     if delay_timer > 0 then
         delay_timer = delay_timer - 1
     end
@@ -86,7 +88,7 @@ local function reset() -- resets everything
     -- TODO: deal with timers and sp
 end
 
-local function clear_screen() do -- resets screen (literally copied some of the earlierr reset() function)
+local function clear_screen() -- resets screen (literally copied some of the earlierr reset() function)
      for y = 1, DISPLAY_HEIGHT do -- number of rows, height (yes, these comments were copied too)
             DISPLAY[y] = {}
         for x = 1, DISPLAY_WIDTH do -- number of cols, width
@@ -95,7 +97,7 @@ local function clear_screen() do -- resets screen (literally copied some of the 
     end
 end
 
-local function draw(y, x, n) do
+local function draw(y, x, n)
     V[0xF] = 0
     for i = 1, n do
         local byte = MEMORY[I + i]
@@ -105,7 +107,7 @@ local function draw(y, x, n) do
         end
 end
 
-local function load_rom(filename) do
+local function load_rom(filename)
     local file = assert(io.open(filename, rb))
     local data = file:read("*all")
     assert(file:close())
@@ -164,32 +166,48 @@ function love.load(arg)
                 if NN == 0xE0 then
                     clear_screen();
                 end
+            end
+        
         elseif op == 0x1 then
             pc = NNN
+        
         elseif op == 0x2 then
+        
         elseif op == 0x3 then
+        
         elseif op == 0x4 then
+        
         elseif op == 0x5 then
+        
         elseif op == 0x6 then
             v[x] = NN
+        
         elseif op == 0x7 then
             v[x] = v[x] + NN;
-        end
+        
         elseif op == 0x8 then
+        
         elseif op == 0x9 then
+        
         elseif op == 0xA then
+        
             I = NNN
-        end
+        
         elseif op == 0xB then
+        
         elseif op == 0xC then
+        
         elseif op == 0xD then
             draw(v[x] & 63,v[y] & 31,n)
-        end
+        
         elseif op == 0xE then
+        
         elseif op == 0xF then
+        
         else 
             error(string.format("Unknown opcode: %04X", opcode))
         end
+    end
 
     --[[
     refer to https://en.wikipedia.org/wiki/Endianness#/media/File:32bit-Endianess.svg
@@ -228,4 +246,18 @@ function love.update(dt)
 end
 
 function love.draw()
+    for y = 1, 32 do
+        for x = 1, 64 do
+            local px = DISPLAY[y][x]
+            if px == 1 then
+                love.graphics.setColor(1, 1, 1)
+            else
+                love.graphics.setColor(0, 0, 0)
+            end
+            love.graphics.rectangle("fill", x * 12, y * 12, 12, 12)
+        end
+    end
+end
+end
+end
 end
