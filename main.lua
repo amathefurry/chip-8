@@ -4,6 +4,11 @@ local PROGRAM_START = 0x200 -- first 512 bits are reserved for the interpreter
 local MEMORY = {}
 local data = {}
 
+-- DISPLAY --
+local DISPLAY_WIDTH = 64
+local DISPLAY_HEIGHT = 32
+local DISPLAY = {}
+
 function mem_init()
     for i = 0, 0xFFF do
         MEMORY[i] = 0
@@ -19,7 +24,7 @@ local I = 0 -- index register
 local V = {} -- V0..VF
 
 local stack = {} -- LIFO
-local stack_pointer = 1 -- points to the last element in the stack
+local stack_pointer = 0 -- points to the last element in the stack
 
 local delay_timer = 0 -- if not 0 then decreases
 local sound_timer = 0 -- if not 0 then it makes a sound and decreases
@@ -51,11 +56,6 @@ end
 
 local beep = love.audio.newSource(soundData, "static")
 beep:setLooping(true)
-
--- DISPLAY --
-local DISPLAY_WIDTH = 64
-local DISPLAY_HEIGHT = 32
-local DISPLAY = {}
 
 local function reset() -- resets everything
     for i = 1, MEMORY_SIZE - 1 do
@@ -263,7 +263,7 @@ function love.draw()
         for x = 1, 64 do
             local px = DISPLAY[y][x]
             if px == 1 then
-                love.graphics.setColor(1, 1, 1)
+                love.graphics.setColor(255, 255, 255)
             else
                 love.graphics.setColor(0, 0, 0)
             end
