@@ -15,7 +15,46 @@ local pc = PROGRAM_START -- pc stamds for "Program Counter" and it stores the ad
 local I = 0 -- index register
 local V = {} -- V0..VF
 
-local function reset()
+local stack = {} -- LIFO
+local stack_pointer = 1 -- points to the last element in the stack
+
+local delay_timer = 0 -- if not 0 then decreases
+local sound_timer = 0 -- if not 0 then it makes a sound and decreases
+
+function tick_timers() do
+    if delay_timer > 0 then
+        delay_timer = delay_timer - 1
+    end
+    if sound_timer > 0 then
+        sound_timer = sound_timer - 1
+    end
+end
+
+local sampleRate = 44100
+local soundFrequency = 440
+
+local soundData = love.sound.newSoundData(
+    sampleRate,
+    sampleRate,
+    16,
+    1
+)
+
+for i = 0, sampleRate - 1 do
+    local t = i / sampleRate
+    local sample = math.sin(2 * math.pi * soundFrequency * t)
+    soundData:setSample(i, sample)
+end
+
+local beep = love.audio.newSource(soundData, "static")
+beep:setLooping(true)
+
+-- DISPLAY --
+local DISPLAY_WIDTH = 64
+local DISPLAY_HEIGHT = 32
+local DISPLAY = {}
+
+local function reset() -- resets everything
     for i = 1, MEMORY_SIZE - 1 do
         MEMORY[i] = 0
     end
@@ -23,16 +62,11 @@ local function reset()
         V[i] = 0
     end
 
--- DISPLAY --
-local DISPLAY_WIDTH = 64
-local DISPLAY_HEIGHT = 32
-local DISPLAY = {}
-
-for y = 1, DISPLAY_HEIGHT do -- number of rows, height
-    DISPLAY[y] = {}
-    for x = 1, DISPLAY_WIDTH do -- number of cols, width
-        DISPLAY[y][x]=false
-    end
+    for y = 1, DISPLAY_HEIGHT do -- number of rows, height
+        DISPLAY[y] = {}
+        for x = 1, DISPLAY_WIDTH do -- number of cols, width
+            DISPLAY[y][x]=false
+        end
 
         -- TODO: clear stack
     
@@ -50,6 +84,24 @@ for y = 1, DISPLAY_HEIGHT do -- number of rows, height
     pc = PROGRAM_START
 
     -- TODO: deal with timers and sp
+end
+
+local function clear_screen() do -- resets screen (literally copied some of the earlierr reset() function)
+     for y = 1, DISPLAY_HEIGHT do -- number of rows, height (yes, these comments were copied too)
+            DISPLAY[y] = {}
+        for x = 1, DISPLAY_WIDTH do -- number of cols, width
+            DISPLAY[y][x]=false
+        end
+end
+
+local function draw(y, x, n) do
+    V[0xF] = 0
+    for i = 1, n do
+        local byte = MEMORY[I + i]
+        for j = 1, 8 do
+            DISPLAY[y % 32][x % 64 + j - 1] = DISPLAY[y % 32][x % 64 + j - 1] ^ MEMORY[I + i + 8 - j]
+            V[0xF] = DISPLAY[y % 32][x % 64 + j - 1] & MEMORY[I + i + 8 - j]
+        end
 end
 
 local function load_rom(filename) do
@@ -96,7 +148,7 @@ function love.load(arg)
         end
         io.write("\n")
     end
-    ]]--
+    ]]
 
     local function execute(opcode)
         local op = (opcode >> 12) & 0xF
@@ -107,6 +159,9 @@ function love.load(arg)
         local NNN = opcode & 0xFFF
 
         if op == 0x0 then
+            if x == 0x0 then -- note to self consider NNN == 0x0E0
+                if NN == 0xE0 then
+                    clear_screen();
         elseif op == 0x1 then
             pc = NNN
         elseif op == 0x2 then
@@ -114,13 +169,17 @@ function love.load(arg)
         elseif op == 0x4 then
         elseif op == 0x5 then
         elseif op == 0x6 then
+            v[x] = NN
         elseif op == 0x7 then
+            v[x] = v[x] + NN;
         elseif op == 0x8 then
         elseif op == 0x9 then
         elseif op == 0xA then
+            I = NNN
         elseif op == 0xB then
         elseif op == 0xC then
         elseif op == 0xD then
+            draw(v[x] & 63,v[y] & 31,n)
         elseif op == 0xE then
         elseif op == 0xF then
         else 
@@ -144,7 +203,23 @@ function love.load(arg)
     end
 end
 
+local timer_accumulator = 0
+
 function love.update(dt)
+    timer_accumulator = timer_accumulator + dt
+    
+    while timer_accumulator >= 1 / 60 do
+        timer_accumulator = timer_accumulator - 1 / 60
+        tick_timers()
+    end
+
+    if sound_timer > 0 then
+        if not beep:isPlaying() then
+            beep:play()
+        end
+    else if beep:isPlaying() then
+        beep:stop()
+    end
 end
 
 function love.draw()
