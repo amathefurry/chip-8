@@ -1,2 +1,4 @@
 ./chip8-test-rom/*
 chip8-test-rom/
+src/test_opcode.ch8
+src/testibm.ch8
