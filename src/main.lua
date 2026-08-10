@@ -187,7 +187,7 @@ local function execute(opcode)
             V[x] = NN
         
         elseif op == 0x7 then
-            V[x] = V[x] + NN;
+            V[x] = V[x] + NN
         
         elseif op == 0x8 then
         
