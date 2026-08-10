@@ -52,11 +52,11 @@ local soundData = love.sound.newSoundData(
     1
 )
 
---[[for i = 0, sampleRate - 1 do
+for i = 0, sampleRate - 1 do
     local t = i / sampleRate
     local sample = math.sin(2 * math.pi * soundFrequency * t) -- Generates a sine wave
     soundData:setSample(i, sample)
-end]]
+end
 
 local beep = love.audio.newSource(soundData, "static")
 beep:setLooping(true)
