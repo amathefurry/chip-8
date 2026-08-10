@@ -1,4 +1,4 @@
-if arg[#arg] == "vsc_debug" then require("lldebugger").start() end -- copied from a love2d forum. Makes debugging work.
+-- if arg[#arg] == "vsc_debug" then require("lldebugger").start() end -- copied from a love2d forum. Makes debugging work.
 
 -- MEMORY --
 local MEMORY_SIZE = 0x1000 -- 4096 bits
@@ -229,7 +229,7 @@ function love.load(arg)
 
     reset()
     mem_init()    
-    load_rom("testibm.ch8")
+    load_rom("test_opcode.ch8")
     clear_diplay()
 
     --[[
