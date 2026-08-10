@@ -102,7 +102,7 @@ local function reset() -- resets everything
     sound_timer = 0
 end
 
-local function clear_diplay() -- resets screen (literally copied some of the earlierr reset() local function)
+local function clear_display() -- resets screen (literally copied some of the earlierr reset() local function)
      for y = 1, DISPLAY_HEIGHT do -- number of rows, height (yes, these comments were copied too)
             DISPLAY[y] = {}
         for x = 1, DISPLAY_WIDTH do -- number of cols, width
@@ -169,7 +169,7 @@ local function execute(opcode)
 
         if op == 0x0 then
             if NNN == 0x0E0 then
-                clear_diplay()
+                clear_display()
             end
             
         elseif op == 0x1 then
@@ -230,7 +230,7 @@ function love.load(arg)
     reset()
     mem_init()    
     load_rom("test_opcode.ch8")
-    clear_diplay()
+    clear_display()
 
     --[[
     refer to https://en.wikipedia.org/wiki/Endianness#/media/File:32bit-Endianess.svg
