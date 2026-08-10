@@ -1,16 +1,22 @@
+if arg[#arg] == "vsc_debug" then require("lldebugger").start() end -- copied from a love2d forum. Makes debugging work.
+
 -- MEMORY --
 local MEMORY_SIZE = 0x1000 -- 4096 bits
 local PROGRAM_START = 0x200 -- first 512 bits are reserved for the interpreter
-local MEMORY = {}
-local data = {}
+local MEMORY = {} -- literally an array
+local data = {} --
+
+local pc = PROGRAM_START -- pc stamds for "Program Counter" and it stores the address of where
+local I = 0 -- index register
+local V = {} -- V0..VF
 
 -- DISPLAY --
 local DISPLAY_WIDTH = 64
 local DISPLAY_HEIGHT = 32
 local DISPLAY = {}
 
-function mem_init()
-    for i = 0, 0xFFF do
+local function mem_init()
+    for i = 0, 0x1000 do
         MEMORY[i] = 0
     end
 
@@ -19,9 +25,7 @@ function mem_init()
     end
 end
 
-local pc = PROGRAM_START -- pc stamds for "Program Counter" and it stores the address of where
-local I = 0 -- index register
-local V = {} -- V0..VF
+
 
 local stack = {} -- LIFO
 local stack_pointer = 0 -- points to the last element in the stack
@@ -29,7 +33,7 @@ local stack_pointer = 0 -- points to the last element in the stack
 local delay_timer = 0 -- if not 0 then decreases
 local sound_timer = 0 -- if not 0 then it makes a sound and decreases
 
-function tick_timers()
+local function tick_timers() -- decreases timers. The load local function ensures this runs at ~60Hz
     if delay_timer > 0 then
         delay_timer = delay_timer - 1
     end
@@ -39,7 +43,7 @@ function tick_timers()
 end
 
 local sampleRate = 44100
-local soundFrequency = 440
+local soundFrequency = 440 -- The frequency of the sound
 
 local soundData = love.sound.newSoundData(
     sampleRate,
@@ -48,11 +52,11 @@ local soundData = love.sound.newSoundData(
     1
 )
 
-for i = 0, sampleRate - 1 do
+--[[for i = 0, sampleRate - 1 do
     local t = i / sampleRate
-    local sample = math.sin(2 * math.pi * soundFrequency * t)
+    local sample = math.sin(2 * math.pi * soundFrequency * t) -- Generates a sine wave
     soundData:setSample(i, sample)
-end
+end]]
 
 local beep = love.audio.newSource(soundData, "static")
 beep:setLooping(true)
@@ -72,13 +76,20 @@ local function reset() -- resets everything
         end
     end
 
-        -- TODO: clear stack
+    if stack_pointer > 0 then -- if stack has elements
+        local i = stack_pointer
+        while i > 0 do
+            stack[i] = nil 
+            i = i - 1
+        end
+        stack_pointer = 0
+    end
     
     for y = 1, DISPLAY_HEIGHT do -- rows
-        display[y] = {}
+        DISPLAY[y] = {}
 
         for x = 1, DISPLAY_WIDTH do -- cols
-            display[y][x] = false
+            DISPLAY[y][x] = false
         end
     end
 
@@ -87,33 +98,55 @@ local function reset() -- resets everything
     I = 0
     pc = PROGRAM_START
 
-    -- TODO: deal with timers and sp
+    delay_timer = 0
+    sound_timer = 0
 end
 
-local function clear_diplay() -- resets screen (literally copied some of the earlierr reset() function)
+local function clear_diplay() -- resets screen (literally copied some of the earlierr reset() local function)
      for y = 1, DISPLAY_HEIGHT do -- number of rows, height (yes, these comments were copied too)
             DISPLAY[y] = {}
         for x = 1, DISPLAY_WIDTH do -- number of cols, width
-            DISPLAY[y][x]=false
+            DISPLAY[y][x] = false
         end
     end
 end
 
-local function display_init()
-    clear_diplay()
-end
-
-
 local function draw(y, x, n)
-    V[0xF] = 0
+   local collision = false
     for i = 1, n do
         local byte = MEMORY[I + i]
         for j = 1, 8 do
-            DISPLAY[y % 32][x % 64 + j - 1] = DISPLAY[y % 32][x % 64 + j - 1] ^ MEMORY[I + i + 8 - j]
-            V[0xF] = DISPLAY[y % 32][x % 64 + j - 1] & MEMORY[I + i + 8 - j]
+            local bit = byte >> (8 - j) & 0x1
+            local dy = y + i
+            local dx = x + j
+
+            if dy > DISPLAY_HEIGHT then
+                dy = dy - DISPLAY_HEIGHT
+            end
+
+            if dx > DISPLAY_WIDTH then
+                dx = dx - DISPLAY_WIDTH
+            end
+
+            if dy < 1 then
+                dy = dy + DISPLAY_HEIGHT
+            end
+
+            if dx < 1 then
+                dx = dx + DISPLAY_WIDTH
+            end
+
+            local oldpx = DISPLAY[dy][dx]
+            local newpx = oldpx or 0 ^ bit
+            DISPLAY[dy][dx] = newpx
+
+            if newpx == 0 and oldpx == 1 then
+                collision = true
+            end
+            V[0xF] = collision
         end
     end
-end
+end 
 
 local function load_rom(filename)
     local file = assert(io.open(filename, rb))
@@ -135,12 +168,10 @@ local function execute(opcode)
         local NNN = opcode & 0xFFF
 
         if op == 0x0 then
-            if x == 0x0 then -- note to self consider NNN == 0x0E0
-                if NN == 0xE0 then
-                    clear_display();
-                end
+            if NNN == 0x0E0 then
+                clear_diplay()
             end
-        
+            
         elseif op == 0x1 then
             pc = NNN
         
@@ -153,10 +184,10 @@ local function execute(opcode)
         elseif op == 0x5 then
         
         elseif op == 0x6 then
-            v[x] = NN
+            V[x] = NN
         
         elseif op == 0x7 then
-            v[x] = v[x] + NN;
+            V[x] = V[x] + NN;
         
         elseif op == 0x8 then
         
@@ -171,7 +202,7 @@ local function execute(opcode)
         elseif op == 0xC then
         
         elseif op == 0xD then
-            draw(v[x] & 63,v[y] & 31,n)
+            draw(V[x] & 64,V[y] & 32, N)
         
         elseif op == 0xE then
         
@@ -189,31 +220,36 @@ local function fetch()
         string.format("PC out of bounds: %04X", pc)
     )
 
-    local hi = memory[pc]
-    local lo = memory[pc + 1]
+    local hi = MEMORY[pc]
+    local lo = MEMORY[pc + 1]
     return (hi << 8) | lo
 end
 
 function love.load(arg)
-    
+
+    reset()
+    mem_init()    
     load_rom("testibm.ch8")
-    mem_init()
-    display_init()
+    clear_diplay()
 
     --[[
     refer to https://en.wikipedia.org/wiki/Endianness#/media/File:32bit-Endianess.svg
     to understand the high-low naming
-    ]]--
     for i = 1, #data, 2 do -- every instruction is 2 byte long
         local high = data:byte(i)
         local low = data:byte(i+1)
         local opcode = (high << 8) | low -- equivalent of opcode = high*0x100 + low
     end
+    ]] --
 
     local function cycle()
         local opcode = fetch()
-
+        execute(opcode)
         pc = pc + 2
+    end
+
+    while pc < MEMORY_SIZE do
+        cycle()
     end
 
     --[[
@@ -259,13 +295,15 @@ function love.update(dt)
 end
 
 function love.draw()
+    local y = 1
+    local x = 1
     for y = 1, 32 do
         for x = 1, 64 do
             local px = DISPLAY[y][x]
             if px == 1 then
                 love.graphics.setColor(255, 255, 255)
             else
-                love.graphics.setColor(0, 0, 0)
+                love.graphics.setColor(255, 0, 0)
             end
             love.graphics.rectangle("fill", x * 12, y * 12, 12, 12)
         end
